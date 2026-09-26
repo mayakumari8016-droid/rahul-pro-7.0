@@ -30,7 +30,7 @@ def send_telegram_message(message):
     try:
         requests.post(url, json=payload)
     except Exception as e:
-        print("Telegram Error:", e)
+        pass
 
 def update_trade_memory(new_trade_data):
     if os.path.exists(MEMORY_FILE):
@@ -68,8 +68,8 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    # Direct Google API Call (No library needed)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # यहाँ मॉडल का नाम 'gemini-1.5-flash-latest' कर दिया गया है
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
@@ -144,7 +144,8 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # यहाँ भी 'gemini-1.5-flash-latest' अपडेट कर दिया गया है
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
