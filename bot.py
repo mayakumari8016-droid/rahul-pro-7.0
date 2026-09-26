@@ -56,24 +56,24 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Test & Select)
+# 3. HUNTER AI ENGINE (Clean Output)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
+    # प्रॉम्प्ट को और सख्त कर दिया है ताकि AI फालतू बातें न करे
     prompt = f"""
     New Signal: {json.dumps(tv_signal)}
     Rules: {rules}
     Check signal against rules. 
-    Reply strictly in this format: DECISION | REASON
+    Reply strictly with ONLY ONE LINE in this format: DECISION | REASON
     Example: NO | RSI is 75, indicating an overbought market.
+    Do not add any bullet points, notes, or explanations below it.
     """
     
-    # 1. Google से सारे उपलब्ध मॉडल्स की लिस्ट मांगो
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
     try:
         resp = requests.get(url_models)
         data = resp.json()
-        # सिर्फ वो मॉडल छांटो जो टेक्स्ट जेनेरेट कर सकते हैं
         valid_models = [m['name'] for m in data.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
     except Exception as e:
         return False, f"Failed to fetch models: {str(e)}"
@@ -81,7 +81,6 @@ def ask_gemini_for_decision(tv_signal):
     if not valid_models:
         return False, "Google API returned zero valid models."
 
-    # 2. हंटर लूप: एक-एक करके हर मॉडल को ट्राई करो जब तक जवाब न मिल जाए
     last_error = ""
     for model_name in valid_models:
         url_gen = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"
@@ -91,7 +90,6 @@ def ask_gemini_for_decision(tv_signal):
         try:
             response = requests.post(url_gen, headers=headers, json=data_payload)
             
-            # अगर मॉडल ने सही जवाब (200 OK) दिया, तो तुरंत ब्रेक करो और जवाब भेजो
             if response.status_code == 200:
                 resp_json = response.json()
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
@@ -99,17 +97,18 @@ def ask_gemini_for_decision(tv_signal):
                 if output:
                     if "|" in output:
                         decision, reason = output.split("|", 1)
+                        # यह लाइन AI की फालतू बातों (bullet points) को काट कर सिर्फ पहली लाइन रखेगी
+                        reason = reason.strip().split('\n')[0]
                     else:
-                        decision = output
+                        decision = output.split('\n')[0]
                         reason = "No formatted reason."
-                    # मॉडल का नाम भी साथ में भेजेंगे ताकि पता चले कौन सा काम किया!
+                        
                     return "YES" in decision.upper(), f"[{model_name.replace('models/', '')}] {reason.strip()}"
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
             last_error = f"{model_name} crashed: {str(e)[:50]}"
             
-    # अगर 20 के 20 मॉडल फेल हो गए, तब यह एरर आएगा
     return False, f"All {len(valid_models)} models failed. Last error: {last_error}"
 
 def place_delta_order(action, ticker, qty):
