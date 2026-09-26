@@ -56,7 +56,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (STABLE V1 API)
+# 3. AI & Background Processing (OpenAI Bypass)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -68,19 +68,25 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    # यहाँ 'v1' और 'gemini-1.5-flash' का इस्तेमाल किया गया है जो 100% काम करता है
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {'Content-Type': 'application/json'}
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    # Google का सबसे नया और स्टेबल OpenAI Compatible URL
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+    data = {
+        "model": "gemini-1.5-flash",
+        "messages": [{"role": "user", "content": prompt}]
+    }
     
     try:
         response = requests.post(url, headers=headers, json=data)
         resp_json = response.json()
         
         if 'error' in resp_json:
-            return False, f"API_Error: {resp_json['error']['message'][:100]}"
+            return False, f"API_Error: {str(resp_json['error'])[:100]}"
             
-        output = resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
+        output = resp_json['choices'][0]['message']['content'].strip()
         
         if "|" in output:
             decision, reason = output.split("|", 1)
@@ -90,8 +96,7 @@ def ask_gemini_for_decision(tv_signal):
             
         return "YES" in decision.upper(), reason.strip()
     except Exception as e:
-        error_msg = str(e).replace('\n', ' ')
-        return False, f"Request_Error: {error_msg[:100]}"
+        return False, f"Request_Error: {str(e)[:100]}"
 
 def place_delta_order(action, ticker, qty):
     return {"status": "success", "order_id": "DLT-TURBO-999"}
@@ -119,7 +124,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (STABLE V1 API)
+# 4. Agent 2: Self-Learning AI (OpenAI Bypass)
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
@@ -144,18 +149,24 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {'Content-Type': 'application/json'}
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+    data = {
+        "model": "gemini-1.5-flash",
+        "messages": [{"role": "user", "content": prompt}]
+    }
     
     try:
         response = requests.post(url, headers=headers, json=data)
         resp_json = response.json()
         
         if 'error' in resp_json:
-            return jsonify({"status": "error", "message": resp_json['error']['message']}), 500
+            return jsonify({"status": "error", "message": str(resp_json['error'])}), 500
             
-        new_rules = resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
+        new_rules = resp_json['choices'][0]['message']['content'].strip()
         
         with open(RULES_FILE, 'w') as file:
             file.write(new_rules)
