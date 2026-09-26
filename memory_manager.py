@@ -2,7 +2,7 @@ import json
 import google.generativeai as genai
 
 # अपनी Gemini API Key डालें
-genai.configure(api_key="AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA")
+genai.configure(api_key="AQ.Ab8RN6LKWXKoltuvzVVuorkEzDwv4jGLIPn56wJJDxiAZFHrdg")
 
 MEMORY_FILE = "trade_memory.json"
 RULES_FILE = "golden_rules.txt"
