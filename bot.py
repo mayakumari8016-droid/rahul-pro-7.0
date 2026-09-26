@@ -56,18 +56,20 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Clean Output)
+# 3. HUNTER AI ENGINE (Perfected Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
-    # प्रॉम्प्ट को और सख्त कर दिया है ताकि AI फालतू बातें न करे
+    
+    # प्रॉम्प्ट को Gemma के लिए बिल्कुल स्मार्ट और सिंपल कर दिया गया है
     prompt = f"""
-    New Signal: {json.dumps(tv_signal)}
+    Signal: {json.dumps(tv_signal)}
     Rules: {rules}
-    Check signal against rules. 
-    Reply strictly with ONLY ONE LINE in this format: DECISION | REASON
-    Example: NO | RSI is 75, indicating an overbought market.
-    Do not add any bullet points, notes, or explanations below it.
+    
+    Decide if this is a good trade (YES) or bad trade (NO).
+    Reply with EXACTLY ONE LINE. Do not use bullet points, markdown, or extra words.
+    Structure your reply exactly like this example:
+    NO | RSI is 75 which means the market is overbought.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -95,9 +97,12 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
+                    # बैकटिक (`) और फालतू स्पेस साफ करना
+                    output = output.replace('`', '').strip()
+                    
                     if "|" in output:
                         decision, reason = output.split("|", 1)
-                        # यह लाइन AI की फालतू बातों (bullet points) को काट कर सिर्फ पहली लाइन रखेगी
+                        # सिर्फ पहली लाइन लेगा, फालतू का निबंध नहीं
                         reason = reason.strip().split('\n')[0]
                     else:
                         decision = output.split('\n')[0]
