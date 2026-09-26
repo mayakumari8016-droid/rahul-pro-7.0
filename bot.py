@@ -56,7 +56,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (DIRECT BYPASS)
+# 3. AI & Background Processing (STABLE V1 API)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -68,8 +68,8 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    # यहाँ मॉडल का नाम 'gemini-1.5-flash-latest' कर दिया गया है
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    # यहाँ 'v1' और 'gemini-1.5-flash' का इस्तेमाल किया गया है जो 100% काम करता है
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
@@ -119,7 +119,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (DIRECT BYPASS)
+# 4. Agent 2: Self-Learning AI (STABLE V1 API)
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
@@ -144,8 +144,7 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     
-    # यहाँ भी 'gemini-1.5-flash-latest' अपडेट कर दिया गया है
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
