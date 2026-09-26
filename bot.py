@@ -56,20 +56,26 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Perfected Prompt)
+# 3. HUNTER AI ENGINE (Strict Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # प्रॉम्प्ट को Gemma के लिए बिल्कुल स्मार्ट और सिंपल कर दिया गया है
+    # प्रॉम्प्ट को पूरी तरह से इडियट-प्रूफ बना दिया गया है
     prompt = f"""
-    Signal: {json.dumps(tv_signal)}
-    Rules: {rules}
+    You are an expert Crypto Trading AI. 
+    Analyze this signal: {json.dumps(tv_signal)}
+    Trading Rules: {rules}
     
-    Decide if this is a good trade (YES) or bad trade (NO).
-    Reply with EXACTLY ONE LINE. Do not use bullet points, markdown, or extra words.
-    Structure your reply exactly like this example:
-    NO | RSI is 75 which means the market is overbought.
+    Task: Decide whether to approve (YES) or reject (NO) the trade.
+    
+    CRITICAL INSTRUCTION: You MUST reply with EXACTLY ONE LINE in this exact format:
+    DECISION | YOUR ACTUAL EXPLANATION
+    
+    DO NOT output placeholders like "REASON" or "[Reasoning]". You MUST write a real explanation based on the signal data (like RSI, trend, etc.).
+    
+    Correct Example 1: NO | The RSI is 75 which means the market is overbought, making it too risky.
+    Correct Example 2: YES | The trend is bullish and conditions look safe to enter.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -97,16 +103,14 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    # बैकटिक (`) और फालतू स्पेस साफ करना
                     output = output.replace('`', '').strip()
                     
                     if "|" in output:
                         decision, reason = output.split("|", 1)
-                        # सिर्फ पहली लाइन लेगा, फालतू का निबंध नहीं
                         reason = reason.strip().split('\n')[0]
                     else:
                         decision = output.split('\n')[0]
-                        reason = "No formatted reason."
+                        reason = "No formatted explanation provided."
                         
                     return "YES" in decision.upper(), f"[{model_name.replace('models/', '')}] {reason.strip()}"
             else:
