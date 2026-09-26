@@ -133,3 +133,47 @@ def webhook():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+# ==========================================
+# 6. Agent 2: Self-Learning AI (Analytics)
+# ==========================================
+@app.route('/learn', methods=['GET'])
+def trigger_agent_2():
+    if not os.path.exists(MEMORY_FILE):
+        return jsonify({"status": "error", "message": "No memory file found."})
+        
+    with open(MEMORY_FILE, 'r') as file:
+        try:
+            memory = json.load(file)
+        except:
+            return jsonify({"status": "error", "message": "Memory file empty."})
+
+    # टेस्टिंग के लिए लिमिट 2 रखी है, ताकि आप तुरंत चेक कर सकें
+    if len(memory) < 2: 
+        return jsonify({"status": "error", "message": f"Need more trades to learn. Current: {len(memory)}"})
+
+    # टेलीग्राम पर अलर्ट भेजें कि AI अपना काम शुरू कर रहा है
+    send_telegram_message("🧠 <b>Agent 2 Active:</b> Analyzing past trades to update Golden Rules...")
+
+    prompt = f"""
+    You are an expert Crypto Hedge Fund Manager. 
+    Analyze my AI bot's recent trade memory: {json.dumps(memory)}
+    
+    Based on what failed or succeeded, write 3 strict, updated trading rules for the next trades.
+    Format as plain text rules only. No greetings, no extra text.
+    """
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        # यहाँ max_tokens नहीं लगाया है, क्योंकि रूल्स लिखने के लिए AI को सोचना पड़ेगा
+        response = model.generate_content(prompt)
+        new_rules = response.text.strip()
+        
+        # नई फाइल को पुराने रूल्स के ऊपर ओवरराइट (Overwrite) कर दें
+        with open(RULES_FILE, 'w') as file:
+            file.write(new_rules)
+            
+        send_telegram_message(f"✅ <b>Rules Updated Successfully!</b>\n\n{new_rules}")
+        return jsonify({"status": "success", "message": "Golden Rules updated by Agent 2!"}), 200
+        
+    except Exception as e:
+        print("Agent 2 Error:", e)
+        return jsonify({"status": "error", "message": "Failed to update rules."}), 500
