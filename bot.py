@@ -105,7 +105,14 @@ def process_signal_background(tv_data):
     else:
         tv_data["ai_decision"] = "NO"
         update_trade_memory(tv_data)
-        send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nAI found high risk.")
+        # हम AI से कहेंगे कि वह अपना जवाब इस फॉर्मेट में दे:
+prompt = f"""
+New Signal: {json.dumps(tv_signal)}
+Rules: {rules}
+Check signal against rules. 
+Reply strictly in this format: DECISION | REASON
+Example: NO | RSI is 75, indicating an overbought market.
+"""
 
 # ==========================================
 # 4. Main Webhook Route
