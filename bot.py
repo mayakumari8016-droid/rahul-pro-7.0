@@ -56,26 +56,21 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Strict Prompt)
+# 3. HUNTER AI ENGINE (No-Copy Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # प्रॉम्प्ट को पूरी तरह से इडियट-प्रूफ बना दिया गया है
+    # प्रॉम्प्ट में से डमी शब्द हटा दिए गए हैं ताकि AI कॉपी न कर सके
     prompt = f"""
-    You are an expert Crypto Trading AI. 
-    Analyze this signal: {json.dumps(tv_signal)}
-    Trading Rules: {rules}
+    Signal data: {json.dumps(tv_signal)}
+    Rules: {rules}
     
-    Task: Decide whether to approve (YES) or reject (NO) the trade.
+    Step 1: Decide if this is a good trade (YES) or a bad trade (NO).
+    Step 2: Write a real 1-sentence technical reason based on the signal's RSI or trend.
+    Step 3: Output ONLY your decision and your reason, separated by a '|' symbol.
     
-    CRITICAL INSTRUCTION: You MUST reply with EXACTLY ONE LINE in this exact format:
-    DECISION | YOUR ACTUAL EXPLANATION
-    
-    DO NOT output placeholders like "REASON" or "[Reasoning]". You MUST write a real explanation based on the signal data (like RSI, trend, etc.).
-    
-    Correct Example 1: NO | The RSI is 75 which means the market is overbought, making it too risky.
-    Correct Example 2: YES | The trend is bullish and conditions look safe to enter.
+    Example response: NO | The RSI is 75 which indicates an overbought condition.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
