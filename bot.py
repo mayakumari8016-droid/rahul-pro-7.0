@@ -71,7 +71,7 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         output = response.text.strip()
         
@@ -141,7 +141,7 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         new_rules = response.text.strip()
         
