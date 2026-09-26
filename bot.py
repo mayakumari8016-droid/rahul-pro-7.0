@@ -16,7 +16,7 @@ TELEGRAM_CHAT_ID = "@poojasarkar88"
 
 # Gemini AI
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
-genai.configure(api_key=AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg)
+genai.configure(api_key="AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg")
 
 # Delta Exchange (API Keys)
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
