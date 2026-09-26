@@ -84,9 +84,10 @@ def ask_gemini_for_decision(tv_signal):
             reason = "AI didn't provide a specific reason."
             
         return "YES" in decision.upper(), reason.strip()
-    except Exception as e:
-        print("Gemini AI Error:", e)
-        return False, "Error connecting to AI."
+        except Exception as e:
+        error_msg = str(e).replace('\n', ' ')
+        print("Gemini AI Error:", error_msg, flush=True)
+        return False, f"AI_Error: {error_msg[:100]}"
 
 def place_delta_order(action, ticker, qty):
     print(f"Executing {action} order for {qty} {ticker}...")
