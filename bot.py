@@ -1,14 +1,7 @@
 import os
-import sys
-
-# 🚀 SUPER HACK: Server start hote hi latest Google AI library force-download karega
-# Yeh Render ke purane cache (404 error) ko hamesha ke liye khatam kar dega
-os.system(f"{sys.executable} -m pip install -q --upgrade google-generativeai")
-
 import json
 import requests
 import threading
-import google.generativeai as genai
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -20,7 +13,6 @@ TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
-genai.configure(api_key="AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA")
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
@@ -64,9 +56,43 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (MULTI-MODEL)
+# 3. AUTO-DISCOVERY AI ENGINE
 # ==========================================
+def get_working_model():
+    # यह फंक्शन Google से पूछता है कि इस Key के लिए कौन से मॉडल उपलब्ध हैं
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+    try:
+        resp = requests.get(url)
+        data = resp.json()
+        
+        if 'error' in data:
+            return None, f"Google Key Error: {data['error'].get('message', str(data))}"
+            
+        valid_models = []
+        for m in data.get('models', []):
+            if 'generateContent' in m.get('supportedGenerationMethods', []):
+                valid_models.append(m['name'])
+                
+        if not valid_models:
+            return None, "Key is working, but Google says ZERO models are allowed for this key."
+            
+        # जो भी पहला मॉडल मिलेगा, हम उसी का इस्तेमाल करेंगे
+        best_model = valid_models[0]
+        for m in valid_models:
+            if 'gemini-1.5-flash' in m:
+                best_model = m
+                break
+                
+        return best_model, "Success"
+    except Exception as e:
+        return None, f"Network Error: {str(e)}"
+
 def ask_gemini_for_decision(tv_signal):
+    model_name, status_msg = get_working_model()
+    
+    if not model_name:
+        return False, status_msg  # असली एरर टेलीग्राम पर भेज देगा
+        
     rules = read_golden_rules()
     prompt = f"""
     New Signal: {json.dumps(tv_signal)}
@@ -76,28 +102,32 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    # 🧠 MULTI-MODEL FALLBACK: Agar ek fail hua, toh dusra try karega
-    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
-    last_error = ""
+    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {"contents": [{"parts": [{"text": prompt}]}]}
     
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            output = response.text.strip()
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        
+        if response.status_code != 200:
+            return False, f"API_Error ({response.status_code}) on {model_name}: {response.text[:100]}"
             
-            if "|" in output:
-                decision, reason = output.split("|", 1)
-            else:
-                decision = output
-                reason = f"No specific reason provided by {model_name}."
-                
-            return "YES" in decision.upper(), reason.strip()
-        except Exception as e:
-            last_error = str(e).replace('\n', ' ')
-            continue # Agle model par jayega
+        resp_json = response.json()
+        output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        
+        if not output:
+            return False, f"Empty Response from {model_name}"
             
-    return False, f"All_Models_Failed: {last_error[:100]}"
+        if "|" in output:
+            decision, reason = output.split("|", 1)
+        else:
+            decision = output
+            reason = f"No formatted reason. Output: {output[:50]}"
+            
+        return "YES" in decision.upper(), reason.strip()
+        
+    except Exception as e:
+        return False, f"Crash Error: {str(e)[:100]}"
 
 def place_delta_order(action, ticker, qty):
     return {"status": "success", "order_id": "DLT-TURBO-999"}
@@ -107,7 +137,7 @@ def process_signal_background(tv_data):
     ticker = tv_data.get("ticker", "UNKNOWN")
     qty = tv_data.get("qty", "1")
     
-    send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\nChecking with AI...")
+    send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\nChecking with Auto-Discovery AI...")
 
     ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
 
@@ -125,53 +155,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (MULTI-MODEL)
-# ==========================================
-@app.route('/learn', methods=['GET'])
-def trigger_agent_2():
-    if not os.path.exists(MEMORY_FILE):
-        return jsonify({"status": "error", "message": "No memory file found."})
-        
-    with open(MEMORY_FILE, 'r') as file:
-        try:
-            memory = json.load(file)
-        except:
-            return jsonify({"status": "error", "message": "Memory file empty."})
-
-    if len(memory) < 2: 
-        return jsonify({"status": "error", "message": f"Need more trades to learn. Current: {len(memory)}"})
-
-    send_telegram_message("🧠 <b>Agent 2 Active:</b> Analyzing past trades...")
-
-    prompt = f"""
-    You are an expert Crypto Hedge Fund Manager. 
-    Analyze my AI bot's recent trade memory: {json.dumps(memory)}
-    Based on what failed or succeeded, write 3 strict, updated trading rules for the next trades.
-    Format as plain text rules only. No greetings, no extra text.
-    """
-    
-    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
-    last_error = ""
-    
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            new_rules = response.text.strip()
-            
-            with open(RULES_FILE, 'w') as file:
-                file.write(new_rules)
-                
-            send_telegram_message(f"✅ <b>Rules Updated! (by {model_name})</b>\n\n{new_rules}")
-            return jsonify({"status": "success", "message": "Golden Rules updated by Agent 2!"}), 200
-        except Exception as e:
-            last_error = str(e)
-            continue
-            
-    return jsonify({"status": "error", "message": f"Failed: {last_error}"}), 500
-
-# ==========================================
-# 5. Main Webhook Route
+# 4. Main Webhook Route
 # ==========================================
 @app.route('/webhook', methods=['POST'])
 def webhook():
