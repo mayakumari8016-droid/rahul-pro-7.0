@@ -2,7 +2,6 @@ import os
 import json
 import requests
 import threading
-import google.generativeai as genai
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -13,9 +12,7 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 
-# आपकी नई और सही Google Gemini API Key
-GEMINI_API_KEY = "AQ.Ab8RN6LKWXKoltuvzVVuorkEzDwv4jGLIPn56wJJDxiAZFHrdg"
-genai.configure(api_key="AQ.Ab8RN6LKWXKoltuvzVVuorkEzDwv4jGLIPn56wJJDxiAZFHrdg")
+GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
@@ -59,7 +56,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing
+# 3. AI & Background Processing (DIRECT BYPASS)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -70,10 +67,20 @@ def ask_gemini_for_decision(tv_signal):
     Reply strictly in this format: DECISION | REASON
     Example: NO | RSI is 75, indicating an overbought market.
     """
+    
+    # Direct Google API Call (No library needed)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        output = response.text.strip()
+        response = requests.post(url, headers=headers, json=data)
+        resp_json = response.json()
+        
+        if 'error' in resp_json:
+            return False, f"API_Error: {resp_json['error']['message'][:100]}"
+            
+        output = resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
         
         if "|" in output:
             decision, reason = output.split("|", 1)
@@ -83,13 +90,10 @@ def ask_gemini_for_decision(tv_signal):
             
         return "YES" in decision.upper(), reason.strip()
     except Exception as e:
-        # अगर कोई एरर आता है, तो वह टेलीग्राम पर दिखेगा
         error_msg = str(e).replace('\n', ' ')
-        print("Gemini AI Error:", error_msg, flush=True)
-        return False, f"AI_Error: {error_msg[:100]}"
+        return False, f"Request_Error: {error_msg[:100]}"
 
 def place_delta_order(action, ticker, qty):
-    print(f"Executing {action} order for {qty} {ticker}...")
     return {"status": "success", "order_id": "DLT-TURBO-999"}
 
 def process_signal_background(tv_data):
@@ -115,7 +119,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI
+# 4. Agent 2: Self-Learning AI (DIRECT BYPASS)
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
@@ -131,19 +135,27 @@ def trigger_agent_2():
     if len(memory) < 2: 
         return jsonify({"status": "error", "message": f"Need more trades to learn. Current: {len(memory)}"})
 
-    send_telegram_message("🧠 <b>Agent 2 Active:</b> Analyzing past trades to update Golden Rules...")
+    send_telegram_message("🧠 <b>Agent 2 Active:</b> Analyzing past trades...")
 
     prompt = f"""
     You are an expert Crypto Hedge Fund Manager. 
     Analyze my AI bot's recent trade memory: {json.dumps(memory)}
-    
     Based on what failed or succeeded, write 3 strict, updated trading rules for the next trades.
     Format as plain text rules only. No greetings, no extra text.
     """
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
-        new_rules = response.text.strip()
+        response = requests.post(url, headers=headers, json=data)
+        resp_json = response.json()
+        
+        if 'error' in resp_json:
+            return jsonify({"status": "error", "message": resp_json['error']['message']}), 500
+            
+        new_rules = resp_json['candidates'][0]['content']['parts'][0]['text'].strip()
         
         with open(RULES_FILE, 'w') as file:
             file.write(new_rules)
@@ -152,8 +164,7 @@ def trigger_agent_2():
         return jsonify({"status": "success", "message": "Golden Rules updated by Agent 2!"}), 200
         
     except Exception as e:
-        print("Agent 2 Error:", e)
-        return jsonify({"status": "error", "message": "Failed to update rules."}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
 # 5. Main Webhook Route
@@ -173,9 +184,6 @@ def webhook():
 
     return jsonify({"status": "success", "message": "Signal processing in background ⚡"}), 200
 
-# ==========================================
-# 6. Server Run
-# ==========================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
