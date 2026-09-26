@@ -17,7 +17,7 @@ TELEGRAM_CHAT_ID = "6724287374"
 
 # Gemini AI (यहाँ अपनी असली Key डालें)
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
-genai.configure(api_key=AQ."Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg")
+genai.configure(api_key="AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg")
 
 # Delta Exchange
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
