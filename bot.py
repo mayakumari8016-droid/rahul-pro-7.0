@@ -15,7 +15,7 @@ TELEGRAM_CHAT_ID = "6724287374"
 
 # आपकी नई और सही Google Gemini API Key
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
-genai.configure(api_key=GEMINI_API_KEY)
+genai.configure(api_key="AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA")
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
@@ -71,7 +71,7 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(prompt)
         output = response.text.strip()
         
@@ -141,7 +141,7 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(prompt)
         new_rules = response.text.strip()
         
