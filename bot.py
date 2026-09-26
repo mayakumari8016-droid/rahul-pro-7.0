@@ -10,17 +10,16 @@ app = Flask(__name__)
 # ==========================================
 # 1. API Keys & Settings 
 # ==========================================
-# ⚠️ अपनी असली Keys यहाँ वापस डाल लें!
 TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 
+# आपकी नई और सही Google Gemini API Key
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
-genai.configure(api_key="AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA")
+genai.configure(api_key=GEMINI_API_KEY)
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
 
-# Files
 MEMORY_FILE = "trade_memory.json"
 RULES_FILE = "golden_rules.txt"
 MAX_MEMORY = 50  
@@ -60,7 +59,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (WITH REASONS)
+# 3. AI & Background Processing
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -76,7 +75,6 @@ def ask_gemini_for_decision(tv_signal):
         response = model.generate_content(prompt)
         output = response.text.strip()
         
-        # AI के जवाब को दो हिस्सों (Decision और Reason) में तोड़ना
         if "|" in output:
             decision, reason = output.split("|", 1)
         else:
@@ -84,7 +82,8 @@ def ask_gemini_for_decision(tv_signal):
             reason = "AI didn't provide a specific reason."
             
         return "YES" in decision.upper(), reason.strip()
-        except Exception as e:
+    except Exception as e:
+        # अगर कोई एरर आता है, तो वह टेलीग्राम पर दिखेगा
         error_msg = str(e).replace('\n', ' ')
         print("Gemini AI Error:", error_msg, flush=True)
         return False, f"AI_Error: {error_msg[:100]}"
@@ -116,7 +115,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (Analytics)
+# 4. Agent 2: Self-Learning AI
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
