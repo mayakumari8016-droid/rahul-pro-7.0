@@ -56,21 +56,21 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (No-Copy Prompt)
+# 3. HUNTER AI ENGINE (Conversational Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # प्रॉम्प्ट में से डमी शब्द हटा दिए गए हैं ताकि AI कॉपी न कर सके
+    # प्रॉम्प्ट को बिल्कुल इंसानों जैसा (Conversational) बना दिया है
     prompt = f"""
-    Signal data: {json.dumps(tv_signal)}
-    Rules: {rules}
+    Act as a professional Crypto Technical Analyst.
+    Analyze this live signal data: {json.dumps(tv_signal)}
+    Trading Rules to follow: {rules}
     
-    Step 1: Decide if this is a good trade (YES) or a bad trade (NO).
-    Step 2: Write a real 1-sentence technical reason based on the signal's RSI or trend.
-    Step 3: Output ONLY your decision and your reason, separated by a '|' symbol.
-    
-    Example response: NO | The RSI is 75 which indicates an overbought condition.
+    Should we take this trade? 
+    Write exactly one sentence. 
+    Start your response with YES or NO, followed by a hyphen (-), and then write your actual technical analysis explaining why (for example, analyzing the RSI value).
+    Do not use any brackets or placeholders.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -98,16 +98,20 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    output = output.replace('`', '').strip()
+                    # फालतू कैरेक्टर्स साफ करना
+                    output = output.replace('`', '').replace('*', '').strip()
                     
-                    if "|" in output:
-                        decision, reason = output.split("|", 1)
-                        reason = reason.strip().split('\n')[0]
+                    # अब हम डैश (-) के आधार पर जवाब को तोड़ेंगे
+                    if "-" in output:
+                        parts = output.split("-", 1)
+                        decision = parts[0].strip().upper()
+                        reason = parts[1].strip().split('\n')[0]
                     else:
-                        decision = output.split('\n')[0]
-                        reason = "No formatted explanation provided."
+                        decision = "YES" if "YES" in output[:10].upper() else "NO"
+                        reason = output.split('\n')[0]
                         
-                    return "YES" in decision.upper(), f"[{model_name.replace('models/', '')}] {reason.strip()}"
+                    final_decision = "YES" in decision
+                    return final_decision, f"[{model_name.replace('models/', '')}] {reason.strip()}"
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
