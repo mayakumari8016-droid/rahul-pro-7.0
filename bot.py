@@ -105,7 +105,7 @@ def process_signal_background(tv_data):
     else:
         tv_data["ai_decision"] = "NO"
         update_trade_memory(tv_data)
-        # हम AI से कहेंगे कि वह अपना जवाब इस फॉर्मेट में दे:
+# हम AI से कहेंगे कि वह अपना जवाब इस फॉर्मेट में दे:
 prompt = f"""
 New Signal: {json.dumps(tv_signal)}
 Rules: {rules}
