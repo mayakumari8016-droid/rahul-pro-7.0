@@ -1,7 +1,14 @@
 import os
+import sys
+
+# 🚀 SUPER HACK: Server start hote hi latest Google AI library force-download karega
+# Yeh Render ke purane cache (404 error) ko hamesha ke liye khatam kar dega
+os.system(f"{sys.executable} -m pip install -q --upgrade google-generativeai")
+
 import json
 import requests
 import threading
+import google.generativeai as genai
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -13,6 +20,7 @@ TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
+genai.configure(api_key=GEMINI_API_KEY)
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
@@ -56,7 +64,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (OpenAI BYPASS)
+# 3. AI & Background Processing (MULTI-MODEL)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -68,42 +76,28 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    # सबसे स्टेबल OpenAI Compatible Endpoint (No generateContent issue)
-    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {GEMINI_API_KEY}"
-    }
-    data = {
-        "model": "gemini-1.5-flash",
-        "messages": [{"role": "user", "content": prompt}]
-    }
+    # 🧠 MULTI-MODEL FALLBACK: Agar ek fail hua, toh dusra try karega
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    last_error = ""
     
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        
-        # अगर कोई एरर आता है, तो सीधा और साफ मैसेज मिलेगा
-        if response.status_code != 200:
-            return False, f"API_Error ({response.status_code}): {response.text[:150]}"
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            output = response.text.strip()
             
-        resp_json = response.json()
-        
-        # सुरक्षित तरीके से जवाब निकालना
-        output = resp_json.get('choices', [{}])[0].get('message', {}).get('content', '')
-        
-        if not output:
-            return False, f"Empty Response. Raw: {response.text[:100]}"
+            if "|" in output:
+                decision, reason = output.split("|", 1)
+            else:
+                decision = output
+                reason = f"No specific reason provided by {model_name}."
+                
+            return "YES" in decision.upper(), reason.strip()
+        except Exception as e:
+            last_error = str(e).replace('\n', ' ')
+            continue # Agle model par jayega
             
-        if "|" in output:
-            decision, reason = output.split("|", 1)
-        else:
-            decision = output
-            reason = "No reason provided by AI."
-            
-        return "YES" in decision.upper(), reason.strip()
-        
-    except Exception as e:
-        return False, f"Python_Crash_Prevented: {str(e)[:100]}"
+    return False, f"All_Models_Failed: {last_error[:100]}"
 
 def place_delta_order(action, ticker, qty):
     return {"status": "success", "order_id": "DLT-TURBO-999"}
@@ -131,7 +125,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (OpenAI BYPASS)
+# 4. Agent 2: Self-Learning AI (MULTI-MODEL)
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
@@ -156,36 +150,25 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     
-    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {GEMINI_API_KEY}"
-    }
-    data = {
-        "model": "gemini-1.5-flash",
-        "messages": [{"role": "user", "content": prompt}]
-    }
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    last_error = ""
     
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        
-        if response.status_code != 200:
-            return jsonify({"status": "error", "message": f"API Error: {response.text}"}), 500
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            new_rules = response.text.strip()
             
-        resp_json = response.json()
-        new_rules = resp_json.get('choices', [{}])[0].get('message', {}).get('content', '')
-        
-        if not new_rules:
-            return jsonify({"status": "error", "message": "AI returned empty rules."}), 500
+            with open(RULES_FILE, 'w') as file:
+                file.write(new_rules)
+                
+            send_telegram_message(f"✅ <b>Rules Updated! (by {model_name})</b>\n\n{new_rules}")
+            return jsonify({"status": "success", "message": "Golden Rules updated by Agent 2!"}), 200
+        except Exception as e:
+            last_error = str(e)
+            continue
             
-        with open(RULES_FILE, 'w') as file:
-            file.write(new_rules.strip())
-            
-        send_telegram_message(f"✅ <b>Rules Updated Successfully!</b>\n\n{new_rules.strip()}")
-        return jsonify({"status": "success", "message": "Golden Rules updated by Agent 2!"}), 200
-        
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": f"Failed: {last_error}"}), 500
 
 # ==========================================
 # 5. Main Webhook Route
