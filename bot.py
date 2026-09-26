@@ -12,7 +12,7 @@ app = Flask(__name__)
 # ==========================================
 # Telegram
 TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
-TELEGRAM_CHAT_ID = "@poojasarkar88"
+TELEGRAM_CHAT_ID = "6724287374"
 
 # Gemini AI
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
