@@ -56,7 +56,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. AI & Background Processing (CRASH-PROOF)
+# 3. AI & Background Processing (OpenAI BYPASS)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -68,30 +68,37 @@ def ask_gemini_for_decision(tv_signal):
     Example: NO | RSI is 75, indicating an overbought market.
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {'Content-Type': 'application/json'}
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    # सबसे स्टेबल OpenAI Compatible Endpoint (No generateContent issue)
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+    data = {
+        "model": "gemini-1.5-flash",
+        "messages": [{"role": "user", "content": prompt}]
+    }
     
     try:
         response = requests.post(url, headers=headers, json=data)
         
-        # अगर Google ने कोई भी एरर (जैसे 404 या 400) भेजा, तो उसका कच्चा सच दिखेगा
+        # अगर कोई एरर आता है, तो सीधा और साफ मैसेज मिलेगा
         if response.status_code != 200:
-            return False, f"Google_API_Error ({response.status_code}): {response.text[:150]}"
+            return False, f"API_Error ({response.status_code}): {response.text[:150]}"
             
         resp_json = response.json()
         
-        # बहुत ही सुरक्षित तरीके से JSON को पढ़ना ताकि Python क्रैश न हो
-        output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        # सुरक्षित तरीके से जवाब निकालना
+        output = resp_json.get('choices', [{}])[0].get('message', {}).get('content', '')
         
         if not output:
-            return False, f"Empty AI Response. Raw: {response.text[:100]}"
+            return False, f"Empty Response. Raw: {response.text[:100]}"
             
         if "|" in output:
             decision, reason = output.split("|", 1)
         else:
             decision = output
-            reason = "AI didn't provide a formatted reason."
+            reason = "No reason provided by AI."
             
         return "YES" in decision.upper(), reason.strip()
         
@@ -124,7 +131,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Agent 2: Self-Learning AI (CRASH-PROOF)
+# 4. Agent 2: Self-Learning AI (OpenAI BYPASS)
 # ==========================================
 @app.route('/learn', methods=['GET'])
 def trigger_agent_2():
@@ -149,9 +156,15 @@ def trigger_agent_2():
     Format as plain text rules only. No greetings, no extra text.
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {'Content-Type': 'application/json'}
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+    data = {
+        "model": "gemini-1.5-flash",
+        "messages": [{"role": "user", "content": prompt}]
+    }
     
     try:
         response = requests.post(url, headers=headers, json=data)
@@ -160,7 +173,7 @@ def trigger_agent_2():
             return jsonify({"status": "error", "message": f"API Error: {response.text}"}), 500
             
         resp_json = response.json()
-        new_rules = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        new_rules = resp_json.get('choices', [{}])[0].get('message', {}).get('content', '')
         
         if not new_rules:
             return jsonify({"status": "error", "message": "AI returned empty rules."}), 500
