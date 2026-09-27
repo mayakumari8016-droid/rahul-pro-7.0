@@ -14,7 +14,7 @@ app = Flask(__name__)
 # ==========================================
 # 1. API Keys & Settings 
 # ==========================================
-TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ"
+TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
 TAVILY_API_KEY = "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" 
