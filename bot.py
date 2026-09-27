@@ -12,14 +12,17 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings
+# 1. API Keys & Settings (Ultra-Safe Strip Mode)
 # ==========================================
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "").strip() 
-DELTA_API_KEY = os.environ.get("DELTA_API_KEY", "").strip()
-DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET", "").strip()
+def clean_key(key_str):
+    return key_str.replace("\n", "").replace("\r", "").replace(" ", "").strip()
+
+TELEGRAM_BOT_TOKEN = clean_key(os.environ.get("TELEGRAM_BOT_TOKEN", ""))
+TELEGRAM_CHAT_ID = clean_key(os.environ.get("TELEGRAM_CHAT_ID", ""))
+GEMINI_API_KEY = clean_key(os.environ.get("GEMINI_API_KEY", ""))
+TAVILY_API_KEY = clean_key(os.environ.get("TAVILY_API_KEY", "")) 
+DELTA_API_KEY = clean_key(os.environ.get("DELTA_API_KEY", ""))
+DELTA_API_SECRET = clean_key(os.environ.get("DELTA_API_SECRET", ""))
 RULES_FILE = "golden_rules.txt"
 
 # ==========================================
