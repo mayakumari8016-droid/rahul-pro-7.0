@@ -103,7 +103,7 @@ def get_live_market_news(ticker):
         return "Failed to fetch internet news."
 
 # ==========================================
-# 5. HUNTER AI ENGINE
+# 5. HUNTER AI ENGINE (Strict Date Check Logic)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -113,17 +113,25 @@ def ask_gemini_for_decision(tv_signal):
     past_trades = get_recent_trades(20)
     history_text = json.dumps(past_trades) if past_trades else "No past trades."
     
+    # Injecting Today's Date so AI knows exactly what "Today" is
+    today_date = time.strftime("%Y-%m-%d")
+    
     prompt = f"""
     You are an expert Crypto Trader. 
+    TODAY'S DATE: {today_date}
+    
     1. CURRENT SIGNAL: {json.dumps(tv_signal)}
     2. LIVE NEWS: {live_news}
     3. YOUR PAST TRADES: {history_text}
     4. RULES: {rules}
     
+    CRITICAL NEWS RULES:
+    - If NO news is found, do NOT reject. Proceed to evaluate the trade based on technicals and past trades.
+    - IF NEWS IS FOUND, you MUST verify its date against TODAY'S DATE. If the news is strictly from TODAY, you may approve. If the news is from yesterday, the day before, or any older date, you MUST REJECT the trade immediately to avoid trading on outdated sentiment.
+    
     Task: Decide whether to approve (YES) or reject (NO) this current signal.
     Reply strictly in this format:
     DECISION | One short sentence explaining why.
-    Example: YES | Strong buy signal and news is neutral.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -153,18 +161,21 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (13-Digit & Secret Fix)
+# 6. DELTA EXCHANGE REAL EXECUTION (Perfect Sync)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # Delta strictly requires 13-digit milliseconds
-    timestamp = str(int(time.time() * 1000))
+    # Delta requires precisely 10-digit timestamp (Seconds)
+    timestamp = str(int(time.time()))
+    
+    # Identify Order Side (EXIT uses opposite side to close, but here we just pass it dynamically)
+    order_side = "buy" if action.upper() == "BUY" else "sell"
     
     payload_str = json.dumps({
         "product_symbol": ticker, 
         "order_type": "market", 
-        "side": "buy" if action.lower() == "buy" else "sell", 
+        "side": order_side, 
         "size": int(float(qty))
     }, separators=(',', ':'))
     
@@ -192,18 +203,20 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": f"System Error: {str(e)}"}
 
 # ==========================================
-# 7. SIGNAL PROCESSING (Smart Exit System)
+# 7. SIGNAL PROCESSING (Smart Routing logic)
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
     ticker = tv_data.get("ticker", "UNKNOWN")
     qty = tv_data.get("qty", "1")
     
-    if action == "SELL":
-        send_telegram_message(f"⚡ <b>Fast Exit Triggered</b>\nPair: {ticker}\n🚀 Skipping AI for instant profit booking...")
-        ai_approved, ai_reason = True, "Auto-approved for fast exit (SELL signal)."
+    # EXIT Action -> Direct Profit Booking (No AI Checks)
+    if action == "EXIT":
+        send_telegram_message(f"⚡ <b>Profit Booking Triggered</b>\nPair: {ticker}\n🚀 Skipping AI for instant exit...")
+        ai_approved, ai_reason = True, "Auto-approved for instant profit booking."
+    # BUY or SELL Action -> Full AI Checking (20 Data + News Date)
     else:
-        send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\n🧠 AI is checking history & news...")
+        send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\n🧠 AI is checking 20 past trades & today's news...")
         ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
 
     if ai_approved:
