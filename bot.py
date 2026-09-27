@@ -12,14 +12,14 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings
+# 1. API Keys & Settings (Fixed with .strip() to remove hidden spaces)
 # ==========================================
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY") 
-DELTA_API_KEY = os.environ.get("DELTA_API_KEY")
-DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "").strip() 
+DELTA_API_KEY = os.environ.get("DELTA_API_KEY", "").strip()
+DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET", "").strip()
 RULES_FILE = "golden_rules.txt"
 
 # ==========================================
@@ -153,15 +153,15 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Final Fix)
+# 6. DELTA EXCHANGE REAL EXECUTION (Final Perfect Fix)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # 13-digit milliseconds for Delta strict requirements
-    timestamp = str(int(time.time() * 1000))
+    # 10-DIGIT TIME: Because Delta explicitly demands 10 digits
+    timestamp = str(int(time.time()))
     
-    # JSON dump with strictly NO SPACES for signature matching
+    # Payload strictly without spaces
     payload_str = json.dumps({
         "product_symbol": ticker, 
         "order_type": "market", 
@@ -235,10 +235,10 @@ def webhook():
     return jsonify({"status": "success"}), 200
 
 def notify_startup():
-    time.sleep(5)  # Wait for server to fully start
+    time.sleep(5)
     try:
         ip = requests.get('https://api.ipify.org').text
-        send_telegram_message(f"🚀 <b>Bot Restarted Successfully!</b>\n\n🖥️ <b>Render Server IP:</b> <code>{ip}</code>\n\n👉 इसे कॉपी करें और Delta की API Key ('Rahul Pro 2') में Whitelisted IP की जगह `+` दबाकर सेव कर दें।")
+        send_telegram_message(f"🚀 <b>Bot Restarted Successfully!</b>\n\n🖥️ <b>Render Server IP:</b> <code>{ip}</code>")
     except:
         pass
 
