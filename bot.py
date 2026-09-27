@@ -12,17 +12,19 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings (Ultra-Safe Strip Mode)
+# 1. API Keys & Settings (Direct Hardcoded - No Env Issues)
 # ==========================================
-def clean_key(key_str):
-    return key_str.replace("\n", "").replace("\r", "").replace(" ", "").strip()
+# यहाँ अपनी असली चाबियाँ इनवर्टेड कॉमा (" ") के अंदर बिल्कुल सही-सही पेस्ट करें:
 
-TELEGRAM_BOT_TOKEN = clean_key(os.environ.get("TELEGRAM_BOT_TOKEN", ""))
-TELEGRAM_CHAT_ID = clean_key(os.environ.get("TELEGRAM_CHAT_ID", ""))
-GEMINI_API_KEY = clean_key(os.environ.get("GEMINI_API_KEY", ""))
-TAVILY_API_KEY = clean_key(os.environ.get("TAVILY_API_KEY", "")) 
-DELTA_API_KEY = clean_key(os.environ.get("DELTA_API_KEY", ""))
-DELTA_API_SECRET = clean_key(os.environ.get("DELTA_API_SECRET", ""))
+TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ"
+TELEGRAM_CHAT_ID = "6724287374"
+GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
+TAVILY_API_KEY = "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" 
+
+DELTA_API_KEY = "fIY0KouwTCgvjsKhWmB5eG2MJoixEx"
+# ⚠️ ध्यान दें: नीचे वाला सीक्रेट आधा लग रहा है, यहाँ अपना पूरा 64-अक्षरों वाला असली सीक्रेट डालें!
+DELTA_API_SECRET = "KVJfEs8Byzsa7idqnkNgajmOuOrFkTa4hdZkEyvwCwJGzOERgGtqwsXZIyvR" 
+
 RULES_FILE = "golden_rules.txt"
 
 # ==========================================
@@ -84,7 +86,7 @@ def read_golden_rules():
 # 4. TAVILY NEWS ENGINE
 # ==========================================
 def get_live_market_news(ticker):
-    if not TAVILY_API_KEY:
+    if not TAVILY_API_KEY or TAVILY_API_KEY.startswith("यहाँ_"):
         return "No live news available."
         
     url = "https://api.tavily.com/search"
@@ -109,6 +111,9 @@ def get_live_market_news(ticker):
 # 5. HUNTER AI ENGINE
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
+    if not GEMINI_API_KEY or GEMINI_API_KEY.startswith("यहाँ_"):
+        return False, "Gemini API Key missing in code."
+        
     rules = read_golden_rules()
     ticker = tv_signal.get("ticker", "Crypto")
     live_news = get_live_market_news(ticker)
@@ -181,8 +186,9 @@ def place_delta_order(action, ticker, qty):
     }, separators=(',', ':'))
     
     signature_data = 'POST' + timestamp + '/v2/orders' + payload_str
-    if not DELTA_API_SECRET:
-        return {"status": "failed", "error": "Delta Secret missing"}
+    
+    if not DELTA_API_SECRET or len(DELTA_API_SECRET) < 30:
+        return {"status": "failed", "error": "Delta Secret is missing or incomplete"}
         
     signature = hmac.new(DELTA_API_SECRET.encode('utf-8'), signature_data.encode('utf-8'), hashlib.sha256).hexdigest()
     headers = {
