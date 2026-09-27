@@ -153,11 +153,14 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Fixed Format)
+# 6. DELTA EXCHANGE REAL EXECUTION (Time Sync Fixed)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
-    timestamp = str(int(time.time() * 1000))
+    
+    # FIX: Added 3000 milliseconds (3 seconds) to bypass Render clock drift and 'expired_signature'
+    current_time_ms = int(time.time() * 1000)
+    timestamp = str(current_time_ms + 3000) 
     
     # Payload format fixed to remove spaces for accurate signature matching
     payload_str = json.dumps({
