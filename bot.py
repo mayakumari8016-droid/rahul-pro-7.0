@@ -12,15 +12,15 @@ app = Flask(__name__)
 # ==========================================
 # 1. API Keys & Settings (Secured)
 # ==========================================
-# चेतावनी: अपनी असली keys सर्वर के Environment Variables या .env फाइल में डालें
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6724287374")
+# असली Keys सिर्फ Render के Environment Variables में डालें!
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg")
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "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") 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY") 
 
-DELTA_API_KEY = os.environ.get("DELTA_API_KEY", "LVIouI7TsxkNoP2QHMJfDtpZBohTgA")
-DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET", "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB")
+DELTA_API_KEY = os.environ.get("DELTA_API_KEY")
+DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET")
 
 MEMORY_FILE = "trade_memory.json"
 RULES_FILE = "golden_rules.txt"
@@ -68,7 +68,7 @@ def read_golden_rules():
 # 3. TAVILY NEWS ENGINE (Live Internet Search)
 # ==========================================
 def get_live_market_news(ticker):
-    if not TAVILY_API_KEY or TAVILY_API_KEY == "YOUR_TAVILY_API_KEY":
+    if not TAVILY_API_KEY:
         return "No live news available (Tavily API key missing)."
         
     url = "https://api.tavily.com/search"
@@ -185,6 +185,11 @@ def place_delta_order(action, ticker, qty):
     
     payload_str = json.dumps(payload)
     signature_data = method + timestamp + path + payload_str
+    
+    # Check if DELTA_API_SECRET is loaded correctly
+    if not DELTA_API_SECRET:
+        return {"status": "failed", "error": "Delta API Secret is missing in environment variables"}
+        
     signature = hmac.new(
         DELTA_API_SECRET.encode('utf-8'),
         signature_data.encode('utf-8'),
