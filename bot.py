@@ -29,9 +29,13 @@ RULES_FILE = "golden_rules.txt"
 # 2. Firebase Database Setup (Super Fast Memory)
 # ==========================================
 try:
-    # यहाँ आपकी मास्टर चाबी इस्तेमाल हो रही है (ध्यान रहे फाइल का नाम firebase-key.json ही हो)
-    cred = credentials.Certificate("firebase-key.json")
-    # आपका Firebase Database URL
+    # Render पर फाइल /etc/secrets/ में होती है, जबकि लोकल कंप्यूटर पर सीधे फोल्डर में
+    key_path = "/etc/secrets/firebase-key.json"
+    if not os.path.exists(key_path):
+        key_path = "firebase-key.json" 
+        
+    cred = credentials.Certificate(key_path)
+    
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://rahul-algo-pro-default-rtdb.firebaseio.com/'
     })
@@ -51,12 +55,10 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"Telegram Request Error: {e}")
 
-# (नया) Firebase में डेटा सेव करने वाला फंक्शन 
 def update_trade_memory(new_trade_data):
     try:
-        # 'trade_memory' नाम का फोल्डर Firebase में बन जाएगा
         ref = db.reference('trade_memory')
-        ref.push(new_trade_data) # push() हर नए ट्रेड को एक अलग ID देकर सेव करता है
+        ref.push(new_trade_data) 
         print("⚡ Data saved to Firebase successfully!")
     except Exception as e:
         print(f"⚠️ Firebase Save Error: {e}")
