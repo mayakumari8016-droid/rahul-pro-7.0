@@ -12,18 +12,20 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings (Direct Hardcoded - No Env Issues)
+# 1. API Keys & Settings 
 # ==========================================
-# यहाँ अपनी असली चाबियाँ इनवर्टेड कॉमा (" ") के अंदर बिल्कुल सही-सही पेस्ट करें:
-
-TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
+TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ"
 TELEGRAM_CHAT_ID = "6724287374"
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
 TAVILY_API_KEY = "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" 
 
-DELTA_API_KEY = "olKCB0WGdOmlZcdF7mTmhidouPyxYb"
-# ⚠️ ध्यान दें: नीचे वाला सीक्रेट आधा लग रहा है, यहाँ अपना पूरा 64-अक्षरों वाला असली सीक्रेट डालें!
-DELTA_API_SECRET = "kdEOPNgNFDeDX5yBjH6l5BpBckk01CkHF7ag2kewlTCkhj6DYvjOaUjwKira" 
+DELTA_API_KEY = "fIY0KouwTCgvjsKhWmB5eG2MJoixEx"
+DELTA_API_SECRET = "KVJfEs8Byzsa7idqnkNgajmOuOrFkTa4hdZkEyvwCwJGzOERgGtqwsXZIyvR" 
+
+# 🔥 STATIC PROXY (इसे यहाँ सेट करें) 🔥
+# फॉर्मेट: "http://Username:Password@IP_Address:Port"
+# उदाहरण: "http://rahul123:pass456@185.199.22.10:8080"
+STATIC_PROXY = "" 
 
 RULES_FILE = "golden_rules.txt"
 
@@ -168,14 +170,11 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (10-Digit Seconds Fix)
+# 6. DELTA EXCHANGE REAL EXECUTION (With PROXY)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
-    
-    # Strictly 10-digit timestamp (Seconds)
     timestamp = str(int(time.time()))
-    
     order_side = "buy" if action.upper() == "BUY" else "sell"
     
     payload_str = json.dumps({
@@ -198,8 +197,13 @@ def place_delta_order(action, ticker, qty):
         'Content-Type': 'application/json'
     }
     
+    # ⚡ प्रॉक्सी लॉजिक एक्टिवेटेड
+    proxies = {}
+    if STATIC_PROXY:
+        proxies = {"http": STATIC_PROXY, "https": STATIC_PROXY}
+    
     try:
-        response = requests.post(url, headers=headers, data=payload_str)
+        response = requests.post(url, headers=headers, data=payload_str, proxies=proxies)
         resp_data = response.json()
         
         if response.status_code == 200 and resp_data.get('success'):
