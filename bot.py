@@ -153,15 +153,15 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (10-Digit Seconds Fixed)
+# 6. DELTA EXCHANGE REAL EXECUTION (Final Fix)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # FIX: Using 10-digit seconds instead of 13-digit milliseconds
-    timestamp = str(int(time.time()))
+    # 13-digit milliseconds for Delta strict requirements
+    timestamp = str(int(time.time() * 1000))
     
-    # Payload format fixed to remove spaces for accurate signature matching
+    # JSON dump with strictly NO SPACES for signature matching
     payload_str = json.dumps({
         "product_symbol": ticker, 
         "order_type": "market", 
@@ -174,17 +174,20 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": "Delta Secret missing"}
         
     signature = hmac.new(DELTA_API_SECRET.encode('utf-8'), signature_data.encode('utf-8'), hashlib.sha256).hexdigest()
-    headers = {'api-key': DELTA_API_KEY, 'timestamp': timestamp, 'signature': signature, 'Content-Type': 'application/json'}
+    headers = {
+        'api-key': DELTA_API_KEY, 
+        'timestamp': timestamp, 
+        'signature': signature, 
+        'Content-Type': 'application/json'
+    }
     
     try:
-        # Send exact string to prevent Python from adding hidden spaces
         response = requests.post(url, headers=headers, data=payload_str)
         resp_data = response.json()
         
         if response.status_code == 200 and resp_data.get('success'):
             return {"status": "success", "order_id": resp_data.get('result', {}).get('id', 'Unknown')}
         
-        # THIS WILL PRINT THE EXACT RAW ERROR FROM DELTA IN TELEGRAM
         return {"status": "failed", "error": f"Raw Error: {str(resp_data)}"}
     except Exception as e:
         return {"status": "failed", "error": f"System Error: {str(e)}"}
