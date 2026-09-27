@@ -6,13 +6,14 @@ import time
 import hmac
 import hashlib
 from flask import Flask, request, jsonify
+import firebase_admin
+from firebase_admin import credentials, db
 
 app = Flask(__name__)
 
 # ==========================================
 # 1. API Keys & Settings (Secured)
 # ==========================================
-# असली Keys सिर्फ Render के Environment Variables में डालें!
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
@@ -22,55 +23,51 @@ TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
 DELTA_API_KEY = os.environ.get("DELTA_API_KEY")
 DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET")
 
-MEMORY_FILE = "trade_memory.json"
 RULES_FILE = "golden_rules.txt"
-MAX_MEMORY = 50  
-
-# File corrupt hone se bachane ke liye Threading Lock
-memory_lock = threading.Lock()
 
 # ==========================================
-# 2. Helper Functions (With Permanent Rule Caching)
+# 2. Firebase Database Setup (Super Fast Memory)
+# ==========================================
+try:
+    # यहाँ आपकी मास्टर चाबी इस्तेमाल हो रही है (ध्यान रहे फाइल का नाम firebase-key.json ही हो)
+    cred = credentials.Certificate("firebase-key.json")
+    # आपका Firebase Database URL
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://rahul-algo-pro-default-rtdb.firebaseio.com/'
+    })
+    print("🔥 Firebase Connected Successfully!")
+except Exception as e:
+    print(f"⚠️ Firebase Connection Error: {e}")
+
+# ==========================================
+# 3. Helper Functions 
 # ==========================================
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         response = requests.post(url, json=payload)
-        # यह लाइन Render logs में बताएगी कि टेलीग्राम ने क्या जवाब दिया
         print(f"Telegram API Response: {response.text}") 
     except Exception as e:
         print(f"Telegram Request Error: {e}")
 
+# (नया) Firebase में डेटा सेव करने वाला फंक्शन 
 def update_trade_memory(new_trade_data):
-    with memory_lock:  # Lock lagaya taaki ek sath multiple trades file crash na karein
-        if os.path.exists(MEMORY_FILE):
-            try:
-                with open(MEMORY_FILE, 'r') as file:
-                    memory = json.load(file)
-            except:
-                memory = []
-        else:
-            memory = []
+    try:
+        # 'trade_memory' नाम का फोल्डर Firebase में बन जाएगा
+        ref = db.reference('trade_memory')
+        ref.push(new_trade_data) # push() हर नए ट्रेड को एक अलग ID देकर सेव करता है
+        print("⚡ Data saved to Firebase successfully!")
+    except Exception as e:
+        print(f"⚠️ Firebase Save Error: {e}")
 
-        memory.append(new_trade_data)
-        if len(memory) > MAX_MEMORY:
-            memory = memory[-MAX_MEMORY:]  
-
-        with open(MEMORY_FILE, 'w') as file:
-            json.dump(memory, file, indent=4)
-
-# Rules को मेमोरी में सेव करने के लिए वेरिएबल
 cached_rules = None
 
 def read_golden_rules():
     global cached_rules
-    
-    # अगर रूल्स पहले से मेमोरी में हैं, तो फाइल दोबारा मत पढ़ो (सुपर फ़ास्ट)
     if cached_rules is not None:
         return cached_rules
         
-    # अगर मेमोरी खाली है (सर्वर अभी स्टार्ट हुआ है), तो फाइल पढ़कर सेव कर लो
     if os.path.exists(RULES_FILE):
         with open(RULES_FILE, 'r') as file:
             cached_rules = file.read()
@@ -79,10 +76,9 @@ def read_golden_rules():
     return "No rules found. Please analyze purely based on technical signal."
 
 # ==========================================
-# 3. TAVILY NEWS ENGINE (Live Internet Search)
+# 4. TAVILY NEWS ENGINE (Live Internet Search)
 # ==========================================
 def get_live_market_news(ticker):
-    # न्यूज़ हमेशा ताज़ा (Fresh) आएगी, कैश नहीं होगी
     if not TAVILY_API_KEY:
         return "No live news available (Tavily API key missing)."
         
@@ -107,7 +103,7 @@ def get_live_market_news(ticker):
         return "Failed to fetch internet news."
 
 # ==========================================
-# 4. HUNTER AI ENGINE (Gemini + Tavily)
+# 5. HUNTER AI ENGINE (Gemini + Tavily)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -158,7 +154,6 @@ def ask_gemini_for_decision(tv_signal):
                 resp_json = response.json()
                 candidates = resp_json.get('candidates', [])
                 
-                # Safe Parsing (Crash-proof)
                 if candidates and 'content' in candidates[0] and 'parts' in candidates[0]['content']:
                     output = candidates[0]['content']['parts'][0].get('text', '')
                     
@@ -183,7 +178,7 @@ def ask_gemini_for_decision(tv_signal):
     return False, f"All Gemini models failed. Last error: {last_error}"
 
 # ==========================================
-# 5. DELTA EXCHANGE REAL EXECUTION
+# 6. DELTA EXCHANGE REAL EXECUTION
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
@@ -201,7 +196,6 @@ def place_delta_order(action, ticker, qty):
     payload_str = json.dumps(payload)
     signature_data = method + timestamp + path + payload_str
     
-    # Check if DELTA_API_SECRET is loaded correctly
     if not DELTA_API_SECRET:
         return {"status": "failed", "error": "Delta API Secret is missing in environment variables"}
         
@@ -220,7 +214,6 @@ def place_delta_order(action, ticker, qty):
     
     try:
         response = requests.post(url, headers=headers, json=payload)
-        # यह लाइन Render Logs में असली एरर छाप देगी अगर बैलेंस नहीं होगा या कुछ और दिक्कत होगी
         print(f"Delta Raw Response: {response.text}") 
         resp_data = response.json()
         
@@ -232,7 +225,7 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": str(e)}
 
 # ==========================================
-# 6. SIGNAL PROCESSING
+# 7. SIGNAL PROCESSING
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
@@ -263,7 +256,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED BY AI</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 7. Flask Routes
+# 8. Flask Routes
 # ==========================================
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -282,7 +275,7 @@ def webhook():
 
 @app.route('/', methods=['GET'])
 def ping():
-    return "Rahul Pro 7.0 Bot is alive and running!", 200
+    return "Rahul Pro 7.0 Bot is alive and connected to Firebase!", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
