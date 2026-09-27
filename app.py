@@ -13,14 +13,14 @@ app = Flask(__name__)
 # 1. API Keys & Settings (Secured)
 # ==========================================
 # चेतावनी: अपनी असली keys सर्वर के Environment Variables या .env फाइल में डालें
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "YOUR_TELEGRAM_CHAT_ID")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "6724287374")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "YOUR_TAVILY_API_KEY") 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "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") 
 
-DELTA_API_KEY = os.environ.get("DELTA_API_KEY", "YOUR_DELTA_API_KEY")
-DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET", "YOUR_DELTA_API_SECRET")
+DELTA_API_KEY = os.environ.get("DELTA_API_KEY", "LVIouI7TsxkNoP2QHMJfDtpZBohTgA")
+DELTA_API_SECRET = os.environ.get("DELTA_API_SECRET", "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB")
 
 MEMORY_FILE = "trade_memory.json"
 RULES_FILE = "golden_rules.txt"
