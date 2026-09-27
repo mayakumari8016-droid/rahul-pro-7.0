@@ -56,26 +56,23 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Pattern Completion Prompt)
+# 3. HUNTER AI ENGINE (Strict JSON Parsing)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # 🚨 THE ULTIMATE PARROT-KILLER PROMPT (Few-Shot) 🚨
-    # अब हम इसे इंस्ट्रक्शन नहीं दे रहे, बस एक पैटर्न दे रहे हैं जिसे इसे पूरा करना होगा।
-    prompt = f"""Rules: {rules}
-
-Example 1:
-Signal: {{"action": "BUY", "ticker": "BTC", "rsi": "85"}}
-Response: REJECTED - The RSI is 85, making the market highly overbought and risky for a buy.
-
-Example 2:
-Signal: {{"action": "BUY", "ticker": "ETH", "rsi": "40"}}
-Response: APPROVED - The RSI is 40 and the trend is stable, offering a safe entry point.
-
-Now analyze this actual signal:
-Signal: {json.dumps(tv_signal)}
-Response:"""
+    # 🚨 JSON TRAP PROMPT 🚨
+    prompt = f"""
+    Analyze the signal based on the rules.
+    Signal: {json.dumps(tv_signal)}
+    Rules: {rules}
+    
+    CRITICAL: You MUST output ONLY a valid raw JSON object. Do not output your thoughts, rough work, or any markdown.
+    Format strictly like this:
+    {{"decision": "APPROVED", "reason": "RSI is stable and trend is good."}}
+    OR
+    {{"decision": "REJECTED", "reason": "RSI is 75 which is overbought."}}
+    """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
     try:
@@ -102,19 +99,30 @@ Response:"""
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    # सफाई
-                    output = output.replace('`', '').replace('Response:', '').strip()
+                    # ✂️ CATCHING THE JSON AND CUTTING OUT THE GARBAGE ✂️
+                    output = output.replace('```json', '').replace('```', '').strip()
                     
-                    if "-" in output:
-                        parts = output.split("-", 1)
-                        decision = parts[0].strip().upper()
-                        reason = parts[1].strip()
-                    else:
-                        decision = "APPROVED" if "APPROVED" in output.upper() else "REJECTED"
-                        reason = output
+                    try:
+                        # यह कोड पूरे निबंध में से सिर्फ `{` और `}` के बीच का असली जवाब ढूंढेगा
+                        start_idx = output.find('{')
+                        end_idx = output.rfind('}')
                         
-                    is_approved = "APPROVED" in decision
-                    return is_approved, f"[{model_name.replace('models/', '')}] {reason}"
+                        if start_idx != -1 and end_idx != -1:
+                            clean_json = output[start_idx:end_idx+1]
+                            parsed_data = json.loads(clean_json)
+                            decision = parsed_data.get("decision", "").upper()
+                            reason = parsed_data.get("reason", "No reason provided.")
+                            
+                            return "APPROVED" in decision, f"[{model_name.replace('models/', '')}] {reason}"
+                    except Exception:
+                        pass
+                    
+                    # अगर JSON फेल हो जाए, तो उसके निबंध के आखिरी फैसले को पकड़ने का जुगाड़
+                    if "*Final Decision*:" in output:
+                        fallback_text = output.split("*Final Decision*:")[1].strip()
+                        return "APPROVED" in fallback_text.upper(), f"[{model_name.replace('models/', '')}] {fallback_text}"
+                        
+                    return "YES" in output.upper(), f"[{model_name.replace('models/', '')}] {output[:100]}..."
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
