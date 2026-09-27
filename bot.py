@@ -56,34 +56,40 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Strict JSON Parsing)
+# 3. HUNTER AI ENGINE (Gemini-Only Filter)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # 🚨 JSON TRAP PROMPT 🚨
     prompt = f"""
-    Analyze the signal based on the rules.
+    You are an expert Crypto Trader.
     Signal: {json.dumps(tv_signal)}
     Rules: {rules}
     
-    CRITICAL: You MUST output ONLY a valid raw JSON object. Do not output your thoughts, rough work, or any markdown.
-    Format strictly like this:
-    {{"decision": "APPROVED", "reason": "RSI is stable and trend is good."}}
-    OR
-    {{"decision": "REJECTED", "reason": "RSI is 75 which is overbought."}}
+    Task: Decide whether to approve (YES) or reject (NO) this trade.
+    Reply strictly in this format:
+    DECISION | One short sentence explaining why based on RSI or trend.
+    
+    Example: NO | The RSI is 75 which means the market is overbought.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
     try:
         resp = requests.get(url_models)
         data = resp.json()
-        valid_models = [m['name'] for m in data.get('models', []) if 'generateContent' in m.get('supportedGenerationMethods', [])]
+        
+        # 🚨 GEMMA-KILLER FILTER: सिर्फ Gemini मॉडल्स को पास होने देगा 🚨
+        valid_models = [
+            m['name'] for m in data.get('models', []) 
+            if 'generateContent' in m.get('supportedGenerationMethods', [])
+            and 'gemma' not in m['name'].lower()  # Gemma को रिजेक्ट करो
+            and 'gemini' in m['name'].lower()     # सिर्फ Gemini को सेलेक्ट करो
+        ]
     except Exception as e:
         return False, f"Failed to fetch models: {str(e)}"
         
     if not valid_models:
-        return False, "Google API returned zero valid models."
+        return False, "Google API returned zero valid Gemini models for this key."
 
     last_error = ""
     for model_name in valid_models:
@@ -99,36 +105,23 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    # ✂️ CATCHING THE JSON AND CUTTING OUT THE GARBAGE ✂️
-                    output = output.replace('```json', '').replace('```', '').strip()
+                    output = output.replace('`', '').replace('*', '').strip()
                     
-                    try:
-                        # यह कोड पूरे निबंध में से सिर्फ `{` और `}` के बीच का असली जवाब ढूंढेगा
-                        start_idx = output.find('{')
-                        end_idx = output.rfind('}')
+                    if "|" in output:
+                        decision, reason = output.split("|", 1)
+                        reason = reason.strip().split('\n')[0]
+                    else:
+                        decision = output.split('\n')[0]
+                        reason = "No specific reason provided."
                         
-                        if start_idx != -1 and end_idx != -1:
-                            clean_json = output[start_idx:end_idx+1]
-                            parsed_data = json.loads(clean_json)
-                            decision = parsed_data.get("decision", "").upper()
-                            reason = parsed_data.get("reason", "No reason provided.")
-                            
-                            return "APPROVED" in decision, f"[{model_name.replace('models/', '')}] {reason}"
-                    except Exception:
-                        pass
-                    
-                    # अगर JSON फेल हो जाए, तो उसके निबंध के आखिरी फैसले को पकड़ने का जुगाड़
-                    if "*Final Decision*:" in output:
-                        fallback_text = output.split("*Final Decision*:")[1].strip()
-                        return "APPROVED" in fallback_text.upper(), f"[{model_name.replace('models/', '')}] {fallback_text}"
-                        
-                    return "YES" in output.upper(), f"[{model_name.replace('models/', '')}] {output[:100]}..."
+                    is_approved = "YES" in decision.upper() or "APPROVED" in decision.upper()
+                    return is_approved, f"[{model_name.replace('models/', '')}] {reason.strip()}"
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
             last_error = f"{model_name} crashed: {str(e)[:50]}"
             
-    return False, f"All {len(valid_models)} models failed. Last error: {last_error}"
+    return False, f"All {len(valid_models)} Gemini models failed. Last error: {last_error}"
 
 def place_delta_order(action, ticker, qty):
     return {"status": "success", "order_id": "DLT-TURBO-999"}
