@@ -14,6 +14,9 @@ TELEGRAM_CHAT_ID = "6724287374"
 
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
 
+# 🚨 TAVILY API KEY YAHAN DAALEIN 🚨
+TAVILY_API_KEY = "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" 
+
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
 DELTA_API_SECRET = "5i3oA7VkiVezVlnGSeUgILhdTf7CeGZUYQn0F3AP6U6Z82bmZItOqysZIAYB"
 
@@ -56,21 +59,55 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Clean Output)
+# 3. TAVILY NEWS ENGINE (Live Internet Search)
+# ==========================================
+def get_live_market_news(ticker):
+    if not TAVILY_API_KEY or TAVILY_API_KEY == "YOUR_TAVILY_API_KEY_HERE":
+        return "No live news available (Tavily API key missing)."
+        
+    url = "https://api.tavily.com/search"
+    payload = {
+        "api_key": TAVILY_API_KEY,
+        "query": f"Latest breaking crypto news and market sentiment about {ticker} today",
+        "search_depth": "basic",
+        "include_answer": False,
+        "max_results": 2
+    }
+    
+    try:
+        resp = requests.post(url, json=payload)
+        if resp.status_code == 200:
+            results = resp.json().get('results', [])
+            news_text = " ".join([res.get('content', '') for res in results])
+            # Sirf top 500 characters Gemini ko bhejenge taaki prompt lamba na ho
+            return news_text[:500] if news_text else "No major recent news found."
+        else:
+            return f"Tavily Error: {resp.status_code}"
+    except Exception as e:
+        return "Failed to fetch internet news."
+
+# ==========================================
+# 4. HUNTER AI ENGINE (Gemini + Tavily)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
+    ticker = tv_signal.get("ticker", "Crypto")
+    
+    # 🌐 Gemini se puchhne se pehle live news nikalo
+    live_news = get_live_market_news(ticker)
     
     prompt = f"""
     You are an expert Crypto Trader.
-    Signal: {json.dumps(tv_signal)}
+    Signal Data: {json.dumps(tv_signal)}
+    Live Market News: {live_news}
     Rules: {rules}
     
     Task: Decide whether to approve (YES) or reject (NO) this trade.
+    Consider BOTH the technical signal indicators AND the live news sentiment.
     Reply strictly in this format:
-    DECISION | One short sentence explaining why based on RSI or trend.
+    DECISION | One short sentence explaining why based on chart data or news.
     
-    Example: NO | The RSI is 75 which means the market is overbought.
+    Example: NO | The RSI is stable, but recent negative news makes it risky to buy.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -114,7 +151,6 @@ def ask_gemini_for_decision(tv_signal):
                         reason = "No specific reason provided."
                         
                     is_approved = "YES" in decision.upper() or "APPROVED" in decision.upper()
-                    # यहाँ से मॉडल का नाम हटा दिया गया है
                     return is_approved, reason.strip()
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
@@ -131,7 +167,7 @@ def process_signal_background(tv_data):
     ticker = tv_data.get("ticker", "UNKNOWN")
     qty = tv_data.get("qty", "1")
     
-    send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\nChecking with AI Hunter...")
+    send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\nChecking Chart & Live News with AI...")
 
     ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
 
@@ -149,7 +185,7 @@ def process_signal_background(tv_data):
         send_telegram_message(f"🚫 <b>TRADE REJECTED</b>\nPair: {ticker}\nReason: {ai_reason}")
 
 # ==========================================
-# 4. Main Webhook Route
+# 5. Main Webhook Route
 # ==========================================
 @app.route('/webhook', methods=['POST'])
 def webhook():
