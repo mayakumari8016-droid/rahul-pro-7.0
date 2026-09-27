@@ -36,9 +36,12 @@ def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
-        requests.post(url, json=payload)
+        response = requests.post(url, json=payload)
+        # यह लाइन Render logs में बताएगी कि टेलीग्राम ने क्या जवाब दिया
+        print(f"Telegram API Response: {response.text}") 
     except Exception as e:
-        print(f"Telegram Error: {e}")
+        print(f"Telegram Request Error: {e}")
+
 
 def update_trade_memory(new_trade_data):
     with memory_lock:  # Lock lagaya taaki ek sath multiple trades file crash na karein
