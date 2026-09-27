@@ -60,7 +60,6 @@ def update_trade_memory(new_trade_data):
     except Exception as e:
         print(f"⚠️ Firebase Save Error: {e}")
 
-# (अपडेटेड) - अब यह आखिरी 20 ट्रेड्स पढ़ेगा
 def get_recent_trades(limit=20):
     try:
         ref = db.reference('trade_memory')
@@ -116,7 +115,6 @@ def ask_gemini_for_decision(tv_signal):
     ticker = tv_signal.get("ticker", "Crypto")
     live_news = get_live_market_news(ticker)
     
-    # 20 पुरानी यादें (History) निकाल रहे हैं
     past_trades = get_recent_trades(20)
     history_text = json.dumps(past_trades) if past_trades else "No past trades yet. This is the first trade."
     
@@ -216,16 +214,23 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": str(e)}
 
 # ==========================================
-# 7. SIGNAL PROCESSING
+# 7. SIGNAL PROCESSING (Smart Exit System)
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
     ticker = tv_data.get("ticker", "UNKNOWN")
     qty = tv_data.get("qty", "1")
     
-    send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\n🧠 AI is reading past trades and live news...")
-
-    ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
+    # अगर SELL सिग्नल है, तो AI को बाईपास करके तुरंत एग्जिट करें (Fast Exit)
+    if action == "SELL":
+        send_telegram_message(f"⚡ <b>Fast Exit Triggered</b>\nPair: {ticker}\nAction: {action}\n🚀 Skipping AI for instant profit booking/stop loss...")
+        ai_approved = True
+        ai_reason = "Auto-approved for fast exit (SELL signal)."
+    
+    # अगर BUY सिग्नल है, तभी AI 20 ट्रेड्स की हिस्ट्री पढ़ेगा
+    else:
+        send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\n🧠 AI is reading past 20 trades and live news...")
+        ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
 
     if ai_approved:
         delta_response = place_delta_order(action, ticker, qty)
@@ -265,7 +270,7 @@ def webhook():
 
 @app.route('/', methods=['GET'])
 def ping():
-    return "Rahul Pro 7.0 Bot is alive and Self-Learning (20-Trade Memory)!", 200
+    return "Rahul Pro 7.0 Bot is alive and Self-Learning (Smart Exit Active)!", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
