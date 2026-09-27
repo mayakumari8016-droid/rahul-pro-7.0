@@ -56,7 +56,7 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Gemini-Only Filter)
+# 3. HUNTER AI ENGINE (Clean Output)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -78,12 +78,11 @@ def ask_gemini_for_decision(tv_signal):
         resp = requests.get(url_models)
         data = resp.json()
         
-        # 🚨 GEMMA-KILLER FILTER: सिर्फ Gemini मॉडल्स को पास होने देगा 🚨
         valid_models = [
             m['name'] for m in data.get('models', []) 
             if 'generateContent' in m.get('supportedGenerationMethods', [])
-            and 'gemma' not in m['name'].lower()  # Gemma को रिजेक्ट करो
-            and 'gemini' in m['name'].lower()     # सिर्फ Gemini को सेलेक्ट करो
+            and 'gemma' not in m['name'].lower() 
+            and 'gemini' in m['name'].lower()     
         ]
     except Exception as e:
         return False, f"Failed to fetch models: {str(e)}"
@@ -115,7 +114,8 @@ def ask_gemini_for_decision(tv_signal):
                         reason = "No specific reason provided."
                         
                     is_approved = "YES" in decision.upper() or "APPROVED" in decision.upper()
-                    return is_approved, f"[{model_name.replace('models/', '')}] {reason.strip()}"
+                    # यहाँ से मॉडल का नाम हटा दिया गया है
+                    return is_approved, reason.strip()
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
