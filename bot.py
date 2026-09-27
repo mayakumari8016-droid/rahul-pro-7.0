@@ -202,10 +202,12 @@ def webhook():
 
     return jsonify({"status": "success", "message": "Signal processing in background ⚡"}), 200
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-
+# 🟢 Ping Route को यहाँ ऊपर रखें 🟢
 @app.route('/', methods=['GET'])
 def ping():
     return "Bot is alive and running!", 200
+
+# 🔴 app.run हमेशा फाइल के सबसे आखिर में होना चाहिए 🔴
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
