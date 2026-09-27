@@ -110,10 +110,6 @@ def ask_gemini_for_decision(tv_signal):
     ticker = tv_signal.get("ticker", "Crypto")
     live_news = get_live_market_news(ticker)
     
-    past_trades = get_recent_trades(20)
-    history_text = json.dumps(past_trades) if past_trades else "No past trades."
-    
-    # Injecting Today's Date so AI knows exactly what "Today" is
     today_date = time.strftime("%Y-%m-%d")
     
     prompt = f"""
@@ -161,15 +157,14 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Perfect Sync)
+# 6. DELTA EXCHANGE REAL EXECUTION (10-Digit Time)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # Delta requires precisely 10-digit timestamp (Seconds)
+    # Delta requires 10-digit timestamp (Seconds) to bypass expired_signature
     timestamp = str(int(time.time()))
     
-    # Identify Order Side (EXIT uses opposite side to close, but here we just pass it dynamically)
     order_side = "buy" if action.upper() == "BUY" else "sell"
     
     payload_str = json.dumps({
@@ -203,18 +198,16 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": f"System Error: {str(e)}"}
 
 # ==========================================
-# 7. SIGNAL PROCESSING (Smart Routing logic)
+# 7. SIGNAL PROCESSING 
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
     ticker = tv_data.get("ticker", "UNKNOWN")
     qty = tv_data.get("qty", "1")
     
-    # EXIT Action -> Direct Profit Booking (No AI Checks)
     if action == "EXIT":
         send_telegram_message(f"⚡ <b>Profit Booking Triggered</b>\nPair: {ticker}\n🚀 Skipping AI for instant exit...")
         ai_approved, ai_reason = True, "Auto-approved for instant profit booking."
-    # BUY or SELL Action -> Full AI Checking (20 Data + News Date)
     else:
         send_telegram_message(f"⚡ <b>Turbo Signal Received</b>\nPair: {ticker}\nAction: {action}\n🧠 AI is checking 20 past trades & today's news...")
         ai_approved, ai_reason = ask_gemini_for_decision(tv_data)
