@@ -160,13 +160,13 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Perfect Sync - Final)
+# 6. DELTA EXCHANGE REAL EXECUTION (10-Digit Seconds Fix)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # 13-digit Normal Time (No plus-minus offset needed)
-    timestamp = str(int(time.time() * 1000))
+    # Strictly 10-digit timestamp (Seconds)
+    timestamp = str(int(time.time()))
     
     order_side = "buy" if action.upper() == "BUY" else "sell"
     
