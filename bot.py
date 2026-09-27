@@ -12,7 +12,7 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings (Safe Strip Mode)
+# 1. API Keys & Settings
 # ==========================================
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -103,7 +103,7 @@ def get_live_market_news(ticker):
         return "Failed to fetch internet news."
 
 # ==========================================
-# 5. HUNTER AI ENGINE (Strict Date Check Logic)
+# 5. HUNTER AI ENGINE
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
@@ -160,14 +160,13 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Time Sync Fix)
+# 6. DELTA EXCHANGE REAL EXECUTION (Perfect Sync - Final)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # FIX: Render's clock is ahead. We use 13-digit ms and SUBTRACT 5000 ms (5 seconds)
-    current_time_ms = int(time.time() * 1000)
-    timestamp = str(current_time_ms - 5000)
+    # 13-digit Normal Time (No plus-minus offset needed)
+    timestamp = str(int(time.time() * 1000))
     
     order_side = "buy" if action.upper() == "BUY" else "sell"
     
@@ -202,7 +201,7 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": f"System Error: {str(e)}"}
 
 # ==========================================
-# 7. SIGNAL PROCESSING (Smart Routing logic)
+# 7. SIGNAL PROCESSING 
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
