@@ -12,7 +12,7 @@ from firebase_admin import credentials, db
 app = Flask(__name__)
 
 # ==========================================
-# 1. API Keys & Settings (Fixed with .strip() to remove hidden spaces)
+# 1. API Keys & Settings (Safe Strip Mode)
 # ==========================================
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -153,15 +153,14 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (Final Perfect Fix)
+# 6. DELTA EXCHANGE REAL EXECUTION (13-Digit & Secret Fix)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # 10-DIGIT TIME: Because Delta explicitly demands 10 digits
-    timestamp = str(int(time.time()))
+    # Delta strictly requires 13-digit milliseconds
+    timestamp = str(int(time.time() * 1000))
     
-    # Payload strictly without spaces
     payload_str = json.dumps({
         "product_symbol": ticker, 
         "order_type": "market", 
