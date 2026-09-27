@@ -110,6 +110,9 @@ def ask_gemini_for_decision(tv_signal):
     ticker = tv_signal.get("ticker", "Crypto")
     live_news = get_live_market_news(ticker)
     
+    past_trades = get_recent_trades(20)
+    history_text = json.dumps(past_trades) if past_trades else "No past trades."
+    
     today_date = time.strftime("%Y-%m-%d")
     
     prompt = f"""
@@ -157,13 +160,14 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (10-Digit Time)
+# 6. DELTA EXCHANGE REAL EXECUTION (Time Sync Fix)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     
-    # Delta requires 10-digit timestamp (Seconds) to bypass expired_signature
-    timestamp = str(int(time.time()))
+    # FIX: Render's clock is ahead. We use 13-digit ms and SUBTRACT 5000 ms (5 seconds)
+    current_time_ms = int(time.time() * 1000)
+    timestamp = str(current_time_ms - 5000)
     
     order_side = "buy" if action.upper() == "BUY" else "sell"
     
@@ -198,7 +202,7 @@ def place_delta_order(action, ticker, qty):
         return {"status": "failed", "error": f"System Error: {str(e)}"}
 
 # ==========================================
-# 7. SIGNAL PROCESSING 
+# 7. SIGNAL PROCESSING (Smart Routing logic)
 # ==========================================
 def process_signal_background(tv_data):
     action = tv_data.get("action", "").upper()
