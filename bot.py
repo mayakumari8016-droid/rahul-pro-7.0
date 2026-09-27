@@ -30,7 +30,7 @@ MAX_MEMORY = 50
 memory_lock = threading.Lock()
 
 # ==========================================
-# 2. Helper Functions
+# 2. Helper Functions (With Permanent Rule Caching)
 # ==========================================
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -41,7 +41,6 @@ def send_telegram_message(message):
         print(f"Telegram API Response: {response.text}") 
     except Exception as e:
         print(f"Telegram Request Error: {e}")
-
 
 def update_trade_memory(new_trade_data):
     with memory_lock:  # Lock lagaya taaki ek sath multiple trades file crash na karein
@@ -60,17 +59,30 @@ def update_trade_memory(new_trade_data):
 
         with open(MEMORY_FILE, 'w') as file:
             json.dump(memory, file, indent=4)
-        
+
+# Rules को मेमोरी में सेव करने के लिए वेरिएबल
+cached_rules = None
+
 def read_golden_rules():
+    global cached_rules
+    
+    # अगर रूल्स पहले से मेमोरी में हैं, तो फाइल दोबारा मत पढ़ो (सुपर फ़ास्ट)
+    if cached_rules is not None:
+        return cached_rules
+        
+    # अगर मेमोरी खाली है (सर्वर अभी स्टार्ट हुआ है), तो फाइल पढ़कर सेव कर लो
     if os.path.exists(RULES_FILE):
         with open(RULES_FILE, 'r') as file:
-            return file.read()
+            cached_rules = file.read()
+            return cached_rules
+            
     return "No rules found. Please analyze purely based on technical signal."
 
 # ==========================================
 # 3. TAVILY NEWS ENGINE (Live Internet Search)
 # ==========================================
 def get_live_market_news(ticker):
+    # न्यूज़ हमेशा ताज़ा (Fresh) आएगी, कैश नहीं होगी
     if not TAVILY_API_KEY:
         return "No live news available (Tavily API key missing)."
         
@@ -208,6 +220,8 @@ def place_delta_order(action, ticker, qty):
     
     try:
         response = requests.post(url, headers=headers, json=payload)
+        # यह लाइन Render Logs में असली एरर छाप देगी अगर बैलेंस नहीं होगा या कुछ और दिक्कत होगी
+        print(f"Delta Raw Response: {response.text}") 
         resp_data = response.json()
         
         if response.status_code == 200 and resp_data.get('success'):
