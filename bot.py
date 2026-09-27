@@ -20,10 +20,9 @@ GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
 TAVILY_API_KEY = "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" 
 
 DELTA_API_KEY = "qJTPLbrI20dcTUbZcFA4iPoCaMWwEC"
-# ⚠️ ध्यान दें: नीचे अपना पूरा असली सीक्रेट ही रखें 
 DELTA_API_SECRET = "7ShDOadXWmiv4XrnQLIANYEDLMXzD2EIF4dhwXnjguFigW6IFyCfiYlgpvh6" 
 
-# 🔥 STATIC PROXY SETTINGS (आपके Webshare अकाउंट से) 🔥
+# 🔥 STATIC PROXY SETTINGS (Webshare.io) 🔥
 PROXY_IP = "31.59.20.176"       
 PROXY_PORT = "6754"     
 PROXY_USER = "hymaxiih"     
@@ -172,7 +171,7 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION (With PROXY)
+# 6. DELTA EXCHANGE REAL EXECUTION (With Auto-Clean PROXY)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
@@ -199,10 +198,16 @@ def place_delta_order(action, ticker, qty):
         'Content-Type': 'application/json'
     }
     
-    # ⚡ प्रॉक्सी ऑटो-बिल्डर
+    # ⚡ प्रॉक्सी ऑटो-बिल्डर (स्पेस क्लीनर के साथ)
     proxies = {}
     if PROXY_IP and PROXY_PORT and PROXY_USER and PROXY_PASS:
-        static_proxy_url = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
+        # .strip() किसी भी छुपे हुए स्पेस को साफ़ कर देगा
+        clean_ip = PROXY_IP.strip()
+        clean_port = PROXY_PORT.strip()
+        clean_user = PROXY_USER.strip()
+        clean_pass = PROXY_PASS.strip()
+        
+        static_proxy_url = f"http://{clean_user}:{clean_pass}@{clean_ip}:{clean_port}"
         proxies = {"http": static_proxy_url, "https": static_proxy_url}
     
     try:
