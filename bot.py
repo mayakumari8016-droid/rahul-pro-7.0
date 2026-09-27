@@ -56,22 +56,26 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Natural Language Prompt)
+# 3. HUNTER AI ENGINE (Pattern Completion Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # अब हम इसे कोई फॉर्मेट नहीं दे रहे हैं, बस नेचुरल भाषा में बात करने को कह रहे हैं
-    prompt = f"""
-    You are a real human crypto trader. 
-    Look at this live market data: {json.dumps(tv_signal)}
-    Rules to follow: {rules}
-    
-    Tell me if I should take this trade. 
-    Start your answer with the exact word APPROVED or REJECTED.
-    After that word, write one normal sentence explaining why, based on the RSI and trend in the data.
-    Do NOT use brackets, placeholders, or bullet points. Just talk normally.
-    """
+    # 🚨 THE ULTIMATE PARROT-KILLER PROMPT (Few-Shot) 🚨
+    # अब हम इसे इंस्ट्रक्शन नहीं दे रहे, बस एक पैटर्न दे रहे हैं जिसे इसे पूरा करना होगा।
+    prompt = f"""Rules: {rules}
+
+Example 1:
+Signal: {{"action": "BUY", "ticker": "BTC", "rsi": "85"}}
+Response: REJECTED - The RSI is 85, making the market highly overbought and risky for a buy.
+
+Example 2:
+Signal: {{"action": "BUY", "ticker": "ETH", "rsi": "40"}}
+Response: APPROVED - The RSI is 40 and the trend is stable, offering a safe entry point.
+
+Now analyze this actual signal:
+Signal: {json.dumps(tv_signal)}
+Response:"""
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
     try:
@@ -98,21 +102,19 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    # AI की हर चालाकी (ब्रैकेट और स्टार) को साफ करना
-                    output = output.replace('`', '').replace('*', '').replace('[', '').replace(']', '').strip()
+                    # सफाई
+                    output = output.replace('`', '').replace('Response:', '').strip()
                     
-                    # अब हम सिर्फ शुरूआती शब्द के आधार पर फैसला करेंगे
-                    if output.upper().startswith("APPROVED"):
-                        is_approved = True
-                        reason = output[8:].strip(" -:|,.") # APPROVED शब्द हटाकर बाकी का हिस्सा रीज़न बनेगा
-                    elif output.upper().startswith("REJECTED"):
-                        is_approved = False
-                        reason = output[8:].strip(" -:|,.") # REJECTED शब्द हटा देंगे
+                    if "-" in output:
+                        parts = output.split("-", 1)
+                        decision = parts[0].strip().upper()
+                        reason = parts[1].strip()
                     else:
-                        is_approved = "YES" in output[:15].upper() or "BUY" in output[:15].upper()
-                        reason = output.split('\n')[0]
+                        decision = "APPROVED" if "APPROVED" in output.upper() else "REJECTED"
+                        reason = output
                         
-                    return is_approved, f"[{model_name.replace('models/', '')}] {reason.strip()}"
+                    is_approved = "APPROVED" in decision
+                    return is_approved, f"[{model_name.replace('models/', '')}] {reason}"
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
