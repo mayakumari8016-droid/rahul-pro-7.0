@@ -20,12 +20,14 @@ GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
 TAVILY_API_KEY = "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" 
 
 DELTA_API_KEY = "fIY0KouwTCgvjsKhWmB5eG2MJoixEx"
+# ⚠️ ध्यान दें: नीचे अपना पूरा असली सीक्रेट ही रखें 
 DELTA_API_SECRET = "KVJfEs8Byzsa7idqnkNgajmOuOrFkTa4hdZkEyvwCwJGzOERgGtqwsXZIyvR" 
 
-# 🔥 STATIC PROXY (इसे यहाँ सेट करें) 🔥
-# फॉर्मेट: "http://Username:Password@IP_Address:Port"
-# उदाहरण: "http://rahul123:pass456@185.199.22.10:8080"
-STATIC_PROXY = "" 
+# 🔥 STATIC PROXY SETTINGS (आपके Webshare अकाउंट से) 🔥
+PROXY_IP = "31.59.20.176"       
+PROXY_PORT = "6754"     
+PROXY_USER = "hymaxiih"     
+PROXY_PASS = "z5p3kekp2tal"     
 
 RULES_FILE = "golden_rules.txt"
 
@@ -197,10 +199,11 @@ def place_delta_order(action, ticker, qty):
         'Content-Type': 'application/json'
     }
     
-    # ⚡ प्रॉक्सी लॉजिक एक्टिवेटेड
+    # ⚡ प्रॉक्सी ऑटो-बिल्डर
     proxies = {}
-    if STATIC_PROXY:
-        proxies = {"http": STATIC_PROXY, "https": STATIC_PROXY}
+    if PROXY_IP and PROXY_PORT and PROXY_USER and PROXY_PASS:
+        static_proxy_url = f"http://{PROXY_USER}:{PROXY_PASS}@{PROXY_IP}:{PROXY_PORT}"
+        proxies = {"http": static_proxy_url, "https": static_proxy_url}
     
     try:
         response = requests.post(url, headers=headers, data=payload_str, proxies=proxies)
