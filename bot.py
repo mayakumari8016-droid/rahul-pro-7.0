@@ -153,14 +153,21 @@ def ask_gemini_for_decision(tv_signal):
     return False, "All Gemini models failed."
 
 # ==========================================
-# 6. DELTA EXCHANGE REAL EXECUTION
+# 6. DELTA EXCHANGE REAL EXECUTION (Fixed Format)
 # ==========================================
 def place_delta_order(action, ticker, qty):
     url = "https://api.delta.exchange/v2/orders"
     timestamp = str(int(time.time() * 1000))
-    payload = {"product_symbol": ticker, "order_type": "market", "side": "buy" if action.lower() == "buy" else "sell", "size": int(float(qty))}
     
-    signature_data = 'POST' + timestamp + '/v2/orders' + json.dumps(payload)
+    # Payload format fixed to remove spaces for accurate signature matching
+    payload_str = json.dumps({
+        "product_symbol": ticker, 
+        "order_type": "market", 
+        "side": "buy" if action.lower() == "buy" else "sell", 
+        "size": int(float(qty))
+    }, separators=(',', ':'))
+    
+    signature_data = 'POST' + timestamp + '/v2/orders' + payload_str
     if not DELTA_API_SECRET:
         return {"status": "failed", "error": "Delta Secret missing"}
         
@@ -168,13 +175,17 @@ def place_delta_order(action, ticker, qty):
     headers = {'api-key': DELTA_API_KEY, 'timestamp': timestamp, 'signature': signature, 'Content-Type': 'application/json'}
     
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        # Send exact string to prevent Python from adding hidden spaces
+        response = requests.post(url, headers=headers, data=payload_str)
         resp_data = response.json()
+        
         if response.status_code == 200 and resp_data.get('success'):
             return {"status": "success", "order_id": resp_data.get('result', {}).get('id', 'Unknown')}
-        return {"status": "failed", "error": resp_data.get('error', {}).get('message', 'API Error')}
+        
+        # THIS WILL PRINT THE EXACT RAW ERROR FROM DELTA IN TELEGRAM
+        return {"status": "failed", "error": f"Raw Error: {str(resp_data)}"}
     except Exception as e:
-        return {"status": "failed", "error": str(e)}
+        return {"status": "failed", "error": f"System Error: {str(e)}"}
 
 # ==========================================
 # 7. SIGNAL PROCESSING (Smart Exit System)
