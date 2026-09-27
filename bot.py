@@ -13,8 +13,6 @@ TELEGRAM_BOT_TOKEN = "8195533390:AAGuYQWfmdTvmJBS9D3JyoZ6W3HbO3UoRxc"
 TELEGRAM_CHAT_ID = "6724287374"
 
 GEMINI_API_KEY = "AQ.Ab8RN6KzJPR07f7XhVPQYedI5NOuTGHU2ZuoZrOfhHzogLoOGA"
-
-# 🚨 TAVILY API KEY YAHAN DAALEIN 🚨
 TAVILY_API_KEY = "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" 
 
 DELTA_API_KEY = "LVIouI7TsxkNoP2QHMJfDtpZBohTgA"
@@ -79,7 +77,7 @@ def get_live_market_news(ticker):
         if resp.status_code == 200:
             results = resp.json().get('results', [])
             news_text = " ".join([res.get('content', '') for res in results])
-            # Sirf top 500 characters Gemini ko bhejenge taaki prompt lamba na ho
+            # Sirf top 500 characters Gemini ko bhejenge
             return news_text[:500] if news_text else "No major recent news found."
         else:
             return f"Tavily Error: {resp.status_code}"
@@ -96,6 +94,7 @@ def ask_gemini_for_decision(tv_signal):
     # 🌐 Gemini se puchhne se pehle live news nikalo
     live_news = get_live_market_news(ticker)
     
+    # 🔄 UPDATED PROMPT: News na milne par chart data par focus karega
     prompt = f"""
     You are an expert Crypto Trader.
     Signal Data: {json.dumps(tv_signal)}
@@ -103,11 +102,13 @@ def ask_gemini_for_decision(tv_signal):
     Rules: {rules}
     
     Task: Decide whether to approve (YES) or reject (NO) this trade.
-    Consider BOTH the technical signal indicators AND the live news sentiment.
-    Reply strictly in this format:
-    DECISION | One short sentence explaining why based on chart data or news.
+    - If there is strong news, use it as a double confirmation with the Signal Data.
+    - If Live Market News says "No major recent news found" or similar, DO NOT reject the trade just because of missing news. Instead, base your YES/NO decision entirely on the technical Signal Data provided.
     
-    Example: NO | The RSI is stable, but recent negative news makes it risky to buy.
+    Reply strictly in this format:
+    DECISION | One short sentence explaining why.
+    
+    Example: YES | No major news, but RSI and Trend show a strong buy setup.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
