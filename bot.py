@@ -19,9 +19,9 @@ TELEGRAM_CHAT_ID = "6724287374"
 GEMINI_API_KEY = "AQ.Ab8RN6Lp_QzqNR-tBhIOI5IYaOi9tUFYVMc7FXHllFPZA-FWFg"
 TAVILY_API_KEY = "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" 
 
-DELTA_API_KEY = "fIY0KouwTCgvjsKhWmB5eG2MJoixEx"
+DELTA_API_KEY = "qJTPLbrI20dcTUbZcFA4iPoCaMWwEC"
 # ⚠️ ध्यान दें: नीचे अपना पूरा असली सीक्रेट ही रखें 
-DELTA_API_SECRET = "KVJfEs8Byzsa7idqnkNgajmOuOrFkTa4hdZkEyvwCwJGzOERgGtqwsXZIyvR" 
+DELTA_API_SECRET = "7ShDOadXWmiv4XrnQLIANYEDLMXzD2EIF4dhwXnjguFigW6IFyCfiYlgpvh6" 
 
 # 🔥 STATIC PROXY SETTINGS (आपके Webshare अकाउंट से) 🔥
 PROXY_IP = "31.59.20.176"       
