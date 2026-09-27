@@ -56,21 +56,21 @@ def read_golden_rules():
     return "No rules found."
 
 # ==========================================
-# 3. HUNTER AI ENGINE (Conversational Prompt)
+# 3. HUNTER AI ENGINE (Natural Language Prompt)
 # ==========================================
 def ask_gemini_for_decision(tv_signal):
     rules = read_golden_rules()
     
-    # प्रॉम्प्ट को बिल्कुल इंसानों जैसा (Conversational) बना दिया है
+    # अब हम इसे कोई फॉर्मेट नहीं दे रहे हैं, बस नेचुरल भाषा में बात करने को कह रहे हैं
     prompt = f"""
-    Act as a professional Crypto Technical Analyst.
-    Analyze this live signal data: {json.dumps(tv_signal)}
-    Trading Rules to follow: {rules}
+    You are a real human crypto trader. 
+    Look at this live market data: {json.dumps(tv_signal)}
+    Rules to follow: {rules}
     
-    Should we take this trade? 
-    Write exactly one sentence. 
-    Start your response with YES or NO, followed by a hyphen (-), and then write your actual technical analysis explaining why (for example, analyzing the RSI value).
-    Do not use any brackets or placeholders.
+    Tell me if I should take this trade. 
+    Start your answer with the exact word APPROVED or REJECTED.
+    After that word, write one normal sentence explaining why, based on the RSI and trend in the data.
+    Do NOT use brackets, placeholders, or bullet points. Just talk normally.
     """
     
     url_models = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
@@ -98,20 +98,21 @@ def ask_gemini_for_decision(tv_signal):
                 output = resp_json.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
                 
                 if output:
-                    # फालतू कैरेक्टर्स साफ करना
-                    output = output.replace('`', '').replace('*', '').strip()
+                    # AI की हर चालाकी (ब्रैकेट और स्टार) को साफ करना
+                    output = output.replace('`', '').replace('*', '').replace('[', '').replace(']', '').strip()
                     
-                    # अब हम डैश (-) के आधार पर जवाब को तोड़ेंगे
-                    if "-" in output:
-                        parts = output.split("-", 1)
-                        decision = parts[0].strip().upper()
-                        reason = parts[1].strip().split('\n')[0]
+                    # अब हम सिर्फ शुरूआती शब्द के आधार पर फैसला करेंगे
+                    if output.upper().startswith("APPROVED"):
+                        is_approved = True
+                        reason = output[8:].strip(" -:|,.") # APPROVED शब्द हटाकर बाकी का हिस्सा रीज़न बनेगा
+                    elif output.upper().startswith("REJECTED"):
+                        is_approved = False
+                        reason = output[8:].strip(" -:|,.") # REJECTED शब्द हटा देंगे
                     else:
-                        decision = "YES" if "YES" in output[:10].upper() else "NO"
+                        is_approved = "YES" in output[:15].upper() or "BUY" in output[:15].upper()
                         reason = output.split('\n')[0]
                         
-                    final_decision = "YES" in decision
-                    return final_decision, f"[{model_name.replace('models/', '')}] {reason.strip()}"
+                    return is_approved, f"[{model_name.replace('models/', '')}] {reason.strip()}"
             else:
                 last_error = f"{model_name}: {response.text[:60]}"
         except Exception as e:
